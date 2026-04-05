@@ -135,7 +135,7 @@ class Config:
     # format: "id": (Label, PrimaryKeycode, [ExtraKeycodes])
     # Uses evdev ecodes — works on both X11 and Wayland.
     HOTKEY_DEFS: Dict[str, Tuple[str, int, List[int]]] = field(default_factory=lambda: {
-        "dictation":  ("F3",  ecodes.KEY_F3,  [ecodes.KEY_F13]),
+        "dictation":  ("L-Alt / F3",  ecodes.KEY_LEFTALT,  [ecodes.KEY_F3, ecodes.KEY_F13]),
         "ai":         ("F4",  ecodes.KEY_F4,  [ecodes.KEY_F14]),
         "ai_rewrite": ("F7",  ecodes.KEY_F7,  [ecodes.KEY_PREVIOUSSONG]),
         "vision":     ("F8",  ecodes.KEY_F8,  [ecodes.KEY_PLAYPAUSE]),
