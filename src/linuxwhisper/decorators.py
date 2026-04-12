@@ -36,5 +36,12 @@ def run_on_main_thread(func: Callable) -> Callable:
     """Decorator to schedule function execution on GTK main thread."""
     @wraps(func)
     def wrapper(*args, **kwargs):
-        GLib.idle_add(lambda: func(*args, **kwargs))
+        def _callback():
+            try:
+                func(*args, **kwargs)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error("Main-thread callback error: %s", e)
+            return False  # Run once only
+        GLib.idle_add(_callback)
     return wrapper

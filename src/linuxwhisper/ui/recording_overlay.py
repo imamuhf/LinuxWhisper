@@ -62,8 +62,9 @@ class GtkOverlay(Gtk.Window):
         if HAS_LAYER_SHELL and SESSION_TYPE == "wayland":
             # --- Wayland: gtk-layer-shell ---
             GtkLayerShell.init_for_window(self)
-            GtkLayerShell.set_layer(self, GtkLayerShell.Layer.OVERLAY)
+            GtkLayerShell.set_layer(self, GtkLayerShell.Layer.TOP)
             GtkLayerShell.set_namespace(self, "linuxwhisper-recording")
+            GtkLayerShell.set_exclusive_zone(self, -1)
 
             # Anchor to bottom center
             GtkLayerShell.set_anchor(self, GtkLayerShell.Edge.BOTTOM, True)
