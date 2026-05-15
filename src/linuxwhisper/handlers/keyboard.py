@@ -67,6 +67,8 @@ class KeyboardHandler:
     @classmethod
     def _get_mode_for_keycode(cls, keycode: int) -> Optional[str]:
         """Get mode name for a keycode, if any."""
+        if keycode in (ecodes.KEY_LEFTALT, ecodes.KEY_LEFTCTRL):
+            return None
         return cls._KEY_TO_MODE.get(keycode)
 
     @classmethod
