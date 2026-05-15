@@ -189,7 +189,8 @@ class WaylandScreenshot(ScreenshotBackend):
         # spectacle (KDE) — hangs with pipes, use DEVNULL
         try:
             r = subprocess.run(
-                ["spectacle", "-b", "-f", "-o", output_path],
+                ["spectacle", "-b", "-n", "-f", "-o", output_path],
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 timeout=15,
