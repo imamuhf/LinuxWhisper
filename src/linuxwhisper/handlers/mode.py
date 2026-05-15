@@ -88,7 +88,7 @@ class ModeHandler:
         HistoryManager.add_answer(f"[Dictation] {text}")
         ChatManager.add_message("user", f"🎤 {text}")
         ClipboardService.type_text(text)
-        GLib.timeout_add(1500, OverlayManager.hide)
+        GLib.timeout_add(3000, OverlayManager.hide)
 
     @staticmethod
     def _handle_dictation_terminal(text: str) -> None:
@@ -96,7 +96,7 @@ class ModeHandler:
         HistoryManager.add_answer(f"[Term Dictation] {text}")
         ChatManager.add_message("user", f"💻 {text}")
         ClipboardService.type_text(text, is_terminal=True)
-        GLib.timeout_add(1500, OverlayManager.hide)
+        GLib.timeout_add(3000, OverlayManager.hide)
 
     @staticmethod
     def _handle_ai(text: str) -> None:

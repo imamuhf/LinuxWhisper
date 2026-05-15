@@ -42,6 +42,6 @@ def run_on_main_thread(func: Callable) -> Callable:
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error("Main-thread callback error: %s", e)
-            return False  # Run once only
-        GLib.idle_add(_callback)
+            return False
+        GLib.timeout_add(0, _callback)
     return wrapper
