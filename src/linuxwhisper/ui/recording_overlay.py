@@ -50,7 +50,7 @@ class GtkOverlay(Gtk.Window):
         if visual and screen.is_composited():
             self.set_visual(visual)
 
-        w, h = 220, 60
+        w, h = 500, 60
 
         if HAS_LAYER_SHELL and SESSION_TYPE == "wayland":
             # --- Wayland: gtk-layer-shell ---
@@ -99,8 +99,10 @@ class GtkOverlay(Gtk.Window):
         style.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         self.add(self.label)
 
-    def set_text(self, text: str) -> None:
-        """Update overlay label with transcribed text."""
+    def set_text(self, text: str, max_chars: int = 60) -> None:
+        """Update overlay label with transcribed text (truncated)."""
+        if len(text) > max_chars:
+            text = text[:max_chars] + "…"
         self.label.set_text(text)
 
     def close(self) -> None:
