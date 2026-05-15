@@ -62,6 +62,9 @@ MSG_CSS = """
     margin: 4px 40px 4px 12px;
     font-size: 13px;
 }}
+window {{
+    background-color: {bg};
+}}
 """
 class ChatOverlay(Gtk.Window):
     """Chat overlay using plain GTK widgets."""
@@ -85,7 +88,7 @@ class ChatOverlay(Gtk.Window):
         if visual and screen.is_composited():
             self.set_visual(visual)
 
-        w, h = 340, 450
+        w, h = 380, 600
 
         if USE_LAYER_SHELL:
             GtkLayerShell.init_for_window(self)
@@ -133,11 +136,14 @@ class ChatOverlay(Gtk.Window):
         text = _hex_to_css(scheme["text"])
         text_on_accent = _get_contrast_text(scheme["accent"])
 
+        bg = _hex_to_css(scheme["bg"])
+
         css_str = MSG_CSS.format(
             accent=accent,
             surface=surface,
             text=text,
             text_on_accent=text_on_accent,
+            bg=bg,
         )
 
         provider = Gtk.CssProvider()
@@ -154,7 +160,7 @@ class ChatOverlay(Gtk.Window):
         label.set_name(f"msg-{role}")
         label.set_line_wrap(True)
         label.set_xalign(0 if role == "assistant" else 1)
-        label.set_max_width_chars(30)
+        label.set_max_width_chars(40)
         self.msg_box.pack_start(label, False, False, 0)
         self.msg_box.show_all()
 

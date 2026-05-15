@@ -98,7 +98,7 @@ class Config:
     MAX_TOKENS: int = 32000
     ANSWER_HISTORY_LIMIT: int = 15
     CHAT_MESSAGE_LIMIT: int = 20
-    CHAT_AUTO_HIDE_SEC: int = 3
+    CHAT_AUTO_HIDE_SEC: int = 8
 
     # --- AI Models ---
     MODEL_CHAT: str = "openai/gpt-oss-120b"
