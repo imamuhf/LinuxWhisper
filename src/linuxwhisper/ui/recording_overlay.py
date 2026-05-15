@@ -99,11 +99,26 @@ class GtkOverlay(Gtk.Window):
         style.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         self.add(self.label)
 
-    def set_text(self, text: str, max_chars: int = 60) -> None:
+    def set_text(self, text: str, max_chars: int = 60, is_response: bool = False) -> None:
         """Update overlay label with transcribed text (truncated)."""
         if len(text) > max_chars:
             text = text[:max_chars] + "…"
         self.label.set_text(text)
+        css = Gtk.CssProvider()
+        accent = "#10B981" if is_response else "#669bbc"
+        bg = "rgba(0, 20, 40, 0.92)" if is_response else "rgba(0, 48, 73, 0.92)"
+        css.load_from_data(f"""
+            #overlay-label {{
+                background: {bg};
+                border-radius: 15px;
+                padding: 10px 25px;
+                font-size: 14px;
+                color: {accent};
+            }}
+        """.encode())
+        self.label.get_style_context().add_provider(
+            css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
 
     def close(self) -> None:
         """Clean up and destroy."""

@@ -32,13 +32,13 @@ class OverlayManager:
 
     @staticmethod
     @run_on_main_thread
-    def show_text(text: str) -> None:
+    def show_text(text: str, is_response: bool = False) -> None:
         """Update overlay with transcribed text preview."""
         if STATE.overlay_window:
-            STATE.overlay_window.set_text(text)
+            STATE.overlay_window.set_text(text, is_response=is_response)
         else:
             OverlayManager._show_impl("dictation")
-            STATE.overlay_window.set_text(text)
+            STATE.overlay_window.set_text(text, is_response=is_response)
 
     @staticmethod
     @run_on_main_thread
