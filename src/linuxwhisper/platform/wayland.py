@@ -186,10 +186,13 @@ class WaylandScreenshot(ScreenshotBackend):
         except Exception as e:
             print(f"⚠️ grim error: {e}")
 
-        # spectacle (KDE) — hangs with pipes, use DEVNULL
+        # spectacle (KDE)
         try:
+            env = os.environ.copy()
+            env.pop("LIBGL_ALWAYS_SOFTWARE", None)
             r = subprocess.run(
                 ["spectacle", "-b", "-n", "-f", "-o", output_path],
+                env=env,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
