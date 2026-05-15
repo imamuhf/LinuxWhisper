@@ -186,25 +186,24 @@ class WaylandScreenshot(ScreenshotBackend):
         except Exception as e:
             print(f"⚠️ grim error: {e}")
 
-        # spectacle (KDE)
+        # spectacle (KDE) — preserve D-Bus + Wayland env, fail fast
+        env = os.environ.copy()
+        env.setdefault("XDG_CURRENT_DESKTOP", "KDE")
+        env.setdefault("XDG_SESSION_TYPE", "wayland")
         try:
-            env = os.environ.copy()
-            for k in ("LIBGL_ALWAYS_SOFTWARE", "GDK_BACKEND", "GTK_PATH",
-                       "GTK_MODULES", "WEBKIT_DISABLE_COMPOSITING_MODE"):
-                env.pop(k, None)
             r = subprocess.run(
-                ["spectacle", "-b", "-n", "-f", "-o", output_path],
+                ["spectacle", "-b", "-n", "-o", output_path],
                 env=env,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                timeout=15,
+                timeout=3,
             )
             if r.returncode == 0:
                 return True
             print(f"⚠️ spectacle failed (rc={r.returncode})")
         except FileNotFoundError:
-            print("⚠️ spectacle not found — install spectacle for KDE screenshots")
+            print("⚠️ spectacle not found")
         except subprocess.TimeoutExpired:
             print("⚠️ spectacle timed out")
         except Exception as e:
