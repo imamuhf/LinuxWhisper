@@ -114,7 +114,7 @@ Rather than injecting keystrokes via Wayland protocols (blocked), the program:
 
 This approach is:
 - **Layout-agnostic** — raw scancodes for `Ctrl+V` work regardless of keyboard layout
-- **Unicode-safe** — clipboard handles Korean, Japanese, Arabic, Hebrew, etc.
+- **Unicode-safe** — clipboard handles Arabic, Korean, Japanese, Chinese, etc.
 - **Fast** — pastes entire paragraphs instantly vs. character-by-character injection
 
 ### Requirements
