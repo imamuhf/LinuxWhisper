@@ -17,14 +17,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 
-# AyatanaAppIndicator3 is optional — may not be available on all systems.
-try:
-    gi.require_version('AyatanaAppIndicator3', '0.1')
-    from gi.repository import AyatanaAppIndicator3 as AppIndicator
-    HAS_APP_INDICATOR = True
-except (ValueError, ImportError):
-    AppIndicator = None
-    HAS_APP_INDICATOR = False
+# HAS_APP_INDICATOR is checked lazily in tray.py via subprocess import check.
 
 
 # ---------------------------------------------------------------------------
@@ -111,8 +104,11 @@ class AppState:
     color_scheme: str = CFG.DEFAULT_SCHEME
 
     # --- System Tray ---
-    indicator: Optional[Any] = None  # AppIndicator.Indicator or None
-    gtk_menu: Optional[Gtk.Menu] = None
+    indicator: Optional[Any] = None
+    gtk_menu: Optional[Any] = None
+
+    # --- GTK Main Loop ---
+    main_loop: Optional[Any] = None
 
     # --- UI Persistence ---
     last_chat_position: Optional[Tuple[int, int]] = None

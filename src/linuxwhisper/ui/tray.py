@@ -1,174 +1,174 @@
 """
-System tray (AppIndicator) management.
+System tray (AppIndicator) management via subprocess.
+
+The tray icon lives in a subprocess (tray_process.py) because
+AyatanaAppIndicator3 depends on Gtk 3.0 internally and needs its
+own Gtk main loop.
+
+Communication: Unix socket pair, newline-delimited JSON.
 """
 from __future__ import annotations
 
+import json
 import os
-import re
-from typing import Callable, Dict
-
-from linuxwhisper.config import CFG
-from linuxwhisper.decorators import run_on_main_thread
-from linuxwhisper.state import STATE, HAS_APP_INDICATOR
+import socket
+import subprocess
+import sys
+from typing import Any, Dict
 
 import gi
-gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+gi.require_version('GLib', '2.0')
+from gi.repository import GLib
 
-if HAS_APP_INDICATOR:
-    gi.require_version('AyatanaAppIndicator3', '0.1')
-    from gi.repository import AyatanaAppIndicator3 as AppIndicator
+from linuxwhisper.state import STATE
 
 
 class TrayManager:
-    """System tray (AppIndicator) management."""
+    """System tray (AppIndicator) management via subprocess."""
 
-    @staticmethod
-    def start() -> None:
-        """Initialize and start system tray."""
-        if not HAS_APP_INDICATOR:
-            print("⚠️ AyatanaAppIndicator3 not available — running without tray icon.")
+    _proc: subprocess.Popen | None = None
+    _sock: socket.socket | None = None
+    _available: bool | None = None
+
+    @classmethod
+    def start(cls) -> None:
+        """Launch the tray subprocess and enter the main loop."""
+        if not cls._check_available():
+            print("\u26a0\ufe0f AyatanaAppIndicator3 not available \u2014 running without tray icon.")
             print("   Install: libayatana-appindicator (Arch) or gir1.2-ayatanaappindicator3-0.1 (Debian)")
-            Gtk.main()
+            STATE.main_loop = GLib.MainLoop()
+            STATE.main_loop.run()
             return
 
-        STATE.indicator = AppIndicator.Indicator.new(
-            "linuxwhisper",
-            "emblem-favorite",
-            AppIndicator.IndicatorCategory.APPLICATION_STATUS
+        cls._spawn()
+
+        chan = GLib.IOChannel.unix_new(cls._sock.fileno())
+        chan.add_watch(GLib.IO_IN | GLib.IO_HUP, cls._on_event)
+
+        STATE.main_loop = GLib.MainLoop()
+        STATE.main_loop.run()
+
+    @classmethod
+    def update_menu(cls) -> None:
+        """Send current state to the tray process so it rebuilds the menu."""
+        if not cls._sock:
+            return
+        state = {
+            "chat_enabled": STATE.chat_enabled,
+            "toggle_mode": STATE.toggle_mode,
+            "whisper_model": STATE.whisper_model,
+            "answer_history": STATE.answer_history[:5],
+        }
+        cls._send({"cmd": "update_menu", "state": state})
+
+    @classmethod
+    def _check_available(cls) -> bool:
+        if cls._available is not None:
+            return cls._available
+        try:
+            result = subprocess.run(
+                [sys.executable, "-c",
+                 "import gi; gi.require_version('AyatanaAppIndicator3', '0.1'); "
+                 "from gi.repository import AyatanaAppIndicator3; print('ok')"],
+                capture_output=True, text=True, timeout=5,
+            )
+            cls._available = result.returncode == 0 and "ok" in result.stdout
+        except Exception:
+            cls._available = False
+        return cls._available
+
+    @classmethod
+    def _spawn(cls) -> None:
+        parent_sock, child_sock = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        parent_sock.setblocking(False)
+        cls._sock = parent_sock
+
+        tray_module = os.path.join(os.path.dirname(__file__), "tray_process.py")
+        cls._proc = subprocess.Popen(
+            [sys.executable, tray_module, str(child_sock.fileno())],
+            pass_fds=(child_sock.fileno(),),
+            close_fds=True,
         )
-        STATE.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
-        STATE.indicator.set_title("LinuxWhisper")
-        TrayManager.update_menu()
-        Gtk.main()
+        child_sock.close()
 
-    @staticmethod
-    @run_on_main_thread
-    def update_menu() -> None:
-        """Rebuild and update tray menu."""
-        if not STATE.indicator:
-            return
-        STATE.gtk_menu = TrayManager._build_menu()
-        STATE.indicator.set_menu(STATE.gtk_menu)
+    @classmethod
+    def _send(cls, msg: Dict[str, Any]) -> None:
+        if cls._sock:
+            try:
+                cls._sock.sendall((json.dumps(msg) + "\n").encode())
+            except OSError:
+                pass
 
-    @staticmethod
-    def _build_menu() -> Gtk.Menu:
-        """Build GTK menu for tray."""
-        # Late imports to avoid circular dependencies
-        from linuxwhisper.managers.history import HistoryManager
-        from linuxwhisper.services.clipboard import ClipboardService
-        from linuxwhisper.ui.settings_dialog import SettingsDialog
+    @classmethod
+    def _on_event(cls, source, condition) -> bool:
+        if condition == GLib.IO_HUP:
+            cls._cleanup()
+            return False
+        try:
+            data = cls._sock.recv(65536)
+            if not data:
+                cls._cleanup()
+                return False
+            for line in data.decode().strip().split("\n"):
+                line = line.strip()
+                if line:
+                    cls._handle_event(json.loads(line))
+        except (BlockingIOError, json.JSONDecodeError):
+            pass
+        return True
 
-        menu = Gtk.Menu()
+    @classmethod
+    def _handle_event(cls, event: Dict[str, Any]) -> None:
+        ev = event.get("event")
+        if ev == "chat_toggle":
+            STATE.chat_enabled = event["active"]
+            from linuxwhisper.state import SettingsManager
+            SettingsManager.save(STATE)
+            from linuxwhisper.managers.chat import ChatManager
+            if not STATE.chat_enabled:
+                ChatManager._destroy()
+            else:
+                ChatManager.refresh_overlay()
+        elif ev == "mode_toggle":
+            STATE.toggle_mode = event["active"]
+            from linuxwhisper.state import SettingsManager
+            SettingsManager.save(STATE)
+        elif ev == "model_switch":
+            STATE.whisper_model = event["model"]
+            print(f"\U0001f399\ufe0f Dictation model switched to: {event['model']}")
+            from linuxwhisper.state import SettingsManager
+            SettingsManager.save(STATE)
+        elif ev == "show_settings":
+            from linuxwhisper.ui.settings_dialog import SettingsDialog
+            SettingsDialog.show()
+        elif ev == "clear_history":
+            from linuxwhisper.managers.history import HistoryManager
+            HistoryManager.clear_all()
+        elif ev == "history_click":
+            idx = event["index"]
+            if idx < len(STATE.answer_history):
+                from linuxwhisper.services.clipboard import ClipboardService
+                import re
+                clean = re.sub(r"^\[.*?\]\s*", "", STATE.answer_history[idx]["text"])
+                ClipboardService.paste_text(clean)
+        elif ev == "quit":
+            cls._cleanup()
+            if STATE.main_loop:
+                STATE.main_loop.quit()
+            os._exit(0)
 
-        # History items
-        if STATE.answer_history:
-            for item in STATE.answer_history[:CFG.ANSWER_HISTORY_LIMIT]:
-                preview = item["text"][:50].replace("\n", " ")
-                if len(item["text"]) > 50:
-                    preview += "..."
-                label = f"[{item['timestamp']}] {preview}"
-                menu_item = Gtk.MenuItem(label=label)
-                menu_item.connect("activate", TrayManager._make_history_callback(item, ClipboardService))
-                menu.append(menu_item)
-            menu.append(Gtk.SeparatorMenuItem())
-        else:
-            empty = Gtk.MenuItem(label="(No History)")
-            empty.set_sensitive(False)
-            menu.append(empty)
-            menu.append(Gtk.SeparatorMenuItem())
-
-        # Clear history
-        clear = Gtk.MenuItem(label="Clear History")
-        clear.connect("activate", lambda w: HistoryManager.clear_all())
-        menu.append(clear)
-        
-        menu.append(Gtk.SeparatorMenuItem())
-        
-        # Chat toggle
-        chat_toggle = Gtk.CheckMenuItem(label="Show Chat Overlay")
-        chat_toggle.set_active(STATE.chat_enabled)
-        chat_toggle.connect("toggled", TrayManager._toggle_chat)
-        menu.append(chat_toggle)
-
-        # Toggle mode (hold vs press-to-toggle)
-        toggle_mode = Gtk.CheckMenuItem(label="Toggle Mode (Press to Record)")
-        toggle_mode.set_active(STATE.toggle_mode)
-        toggle_mode.connect("toggled", TrayManager._toggle_mode)
-        menu.append(toggle_mode)
-
-        # Model submenu
-        model_menu = Gtk.Menu()
-        model_group = None
-        for model in CFG.WHISPER_MODELS:
-            item = Gtk.RadioMenuItem(group=model_group, label=model)
-            if model_group is None:
-                model_group = item
-            if model == STATE.whisper_model:
-                item.set_active(True)
-            item.connect("toggled", TrayManager._toggle_model, model)
-            model_menu.append(item)
-
-        model_item = Gtk.MenuItem(label="Dictation Model")
-        model_item.set_submenu(model_menu)
-        menu.append(model_item)
-
-        # Settings
-        settings_item = Gtk.MenuItem(label="Settings")
-        settings_item.connect("activate", lambda w: SettingsDialog.show())
-        menu.append(settings_item)
-
-        menu.append(Gtk.SeparatorMenuItem())
-
-        # Quit
-        quit_item = Gtk.MenuItem(label="Quit")
-        quit_item.connect("activate", TrayManager._quit)
-        menu.append(quit_item)
-
-        menu.show_all()
-        return menu
-
-    @staticmethod
-    def _make_history_callback(item: Dict[str, str], clipboard_service) -> Callable:
-        """Create callback for history item click."""
-        def callback(widget):
-            # Remove prefix labels like [Dictation]
-            clean = re.sub(r"^\[.*?\]\s*", "", item["text"])
-            clipboard_service.paste_text(clean)
-        return callback
-
-    @staticmethod
-    def _toggle_chat(widget) -> None:
-        """Toggle chat overlay visibility."""
-        STATE.chat_enabled = widget.get_active()
-        from linuxwhisper.state import SettingsManager
-        SettingsManager.save(STATE)
-        
-        from linuxwhisper.managers.chat import ChatManager
-        if not STATE.chat_enabled:
-            ChatManager._destroy()
-        else:
-            ChatManager.refresh_overlay()
-
-    @staticmethod
-    def _toggle_model(widget, model: str) -> None:
-        """Switch dictation model from tray."""
-        if not widget.get_active():
-            return
-        STATE.whisper_model = model
-        print(f"🎙️ Dictation model switched to: {model}")
-        from linuxwhisper.state import SettingsManager
-        SettingsManager.save(STATE)
-
-    @staticmethod
-    def _toggle_mode(widget) -> None:
-        """Toggle between hold-to-record and press-to-toggle mode."""
-        STATE.toggle_mode = widget.get_active()
-        from linuxwhisper.state import SettingsManager
-        SettingsManager.save(STATE)
-
-    @staticmethod
-    def _quit(widget) -> None:
-        """Quit application."""
-        Gtk.main_quit()
-        os._exit(0)
+    @classmethod
+    def _cleanup(cls) -> None:
+        if cls._proc:
+            try:
+                cls._proc.terminate()
+                cls._proc.wait(timeout=3)
+            except Exception:
+                cls._proc.kill()
+            cls._proc = None
+        if cls._sock:
+            try:
+                cls._sock.close()
+            except OSError:
+                pass
+            cls._sock = None
