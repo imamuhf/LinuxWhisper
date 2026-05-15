@@ -38,11 +38,10 @@ class KeyboardHandler:
             _KEY_TO_MODE[extra] = mode_id
 
     # Modifier keys that suppress hotkeys when held
+    # (only left-side mods — right-side are used as hotkeys)
     _MODIFIERS: set = {
-        ecodes.KEY_LEFTALT, ecodes.KEY_RIGHTALT,
-        ecodes.KEY_LEFTCTRL, ecodes.KEY_RIGHTCTRL,
-        ecodes.KEY_LEFTSHIFT, ecodes.KEY_RIGHTSHIFT,
-        ecodes.KEY_LEFTMETA, ecodes.KEY_RIGHTMETA,
+        ecodes.KEY_LEFTALT, ecodes.KEY_LEFTCTRL,
+        ecodes.KEY_LEFTSHIFT, ecodes.KEY_LEFTMETA,
     }
 
     @classmethod
