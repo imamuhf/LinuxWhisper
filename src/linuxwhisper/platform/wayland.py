@@ -167,45 +167,43 @@ class WaylandInput(InputBackend):
 
 
 class WaylandScreenshot(ScreenshotBackend):
-    """Screenshot using available Wayland capture tool."""
+    """Screenshot using spectacle (KDE Plasma 6 Wayland)."""
 
     def take_screenshot(self, output_path: str) -> bool:
-        # grim (wlroots compositors) — capture pipes OK
-        try:
-            r = subprocess.run(
-                ["grim", output_path],
-                capture_output=True, timeout=10,
-            )
-            if r.returncode == 0:
-                return True
-            print(f"⚠️ grim failed: {r.stderr.strip().decode()}")
-        except FileNotFoundError:
-            pass
-        except subprocess.TimeoutExpired:
-            pass
-        except Exception as e:
-            print(f"⚠️ grim error: {e}")
+        uid = os.getuid()
 
-        # spectacle (KDE) — preserve D-Bus + Wayland env, fail fast
+        # Kill zombie spectacle instances to prevent D-Bus deadlocks
+        subprocess.run(
+            ["killall", "-q", "spectacle"],
+            stderr=subprocess.DEVNULL,
+        )
+
+        # Inject full KDE/Wayland/D-Bus env so spectacle finds the portal
         env = os.environ.copy()
+        env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path=/run/user/{uid}/bus")
+        env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{uid}")
+        env.setdefault("WAYLAND_DISPLAY", "wayland-0")
         env.setdefault("XDG_CURRENT_DESKTOP", "KDE")
         env.setdefault("XDG_SESSION_TYPE", "wayland")
+
         try:
-            r = subprocess.run(
+            subprocess.run(
                 ["spectacle", "-b", "-n", "-o", output_path],
                 env=env,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 timeout=3,
+                check=True,
             )
-            if r.returncode == 0:
-                return True
-            print(f"⚠️ spectacle failed (rc={r.returncode})")
+            time.sleep(0.05)
+            return True
+        except subprocess.TimeoutExpired:
+            print("⚠️ spectacle D-Bus timeout — portal blocked")
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️ spectacle failed (rc={e.returncode})")
         except FileNotFoundError:
             print("⚠️ spectacle not found")
-        except subprocess.TimeoutExpired:
-            print("⚠️ spectacle timed out")
         except Exception as e:
             print(f"⚠️ spectacle error: {e}")
         return False
