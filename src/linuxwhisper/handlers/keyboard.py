@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 import evdev
 from evdev import InputDevice, categorize, ecodes
+from gi.repository import GLib
 
 from linuxwhisper.config import CFG
 from linuxwhisper.handlers.mode import ModeHandler
@@ -142,17 +143,16 @@ class KeyboardHandler:
 
     @classmethod
     def _stop_and_process(cls) -> None:
-        """Stop recording, transcribe, show preview, then process result."""
+        """Stop recording, transcribe, then process and show preview simultaneously."""
         OverlayManager.show_text("Transcribing...")
         audio_data = AudioService.stop_recording()
 
         if audio_data is not None:
             transcribed = AudioService.transcribe(audio_data)
             if transcribed:
-                def _process_and_hide():
-                    ModeHandler.process(STATE.current_mode, transcribed)
-                    OverlayManager.hide()
-                OverlayManager.show_preview(transcribed, _process_and_hide)
+                OverlayManager.show_text(transcribed)
+                ModeHandler.process(STATE.current_mode, transcribed)
+                GLib.timeout_add(1500, OverlayManager.hide)
 
     @classmethod
     def run(cls) -> None:

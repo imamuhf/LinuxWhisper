@@ -11,9 +11,6 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import GLib
 
 
-PREVIEW_SECONDS = 2
-
-
 class OverlayManager:
     """Manages recording overlay visibility."""
 
@@ -42,17 +39,6 @@ class OverlayManager:
         else:
             OverlayManager._show_impl("dictation")
             STATE.overlay_window.set_text(text)
-
-    @staticmethod
-    @run_on_main_thread
-    def show_preview(text: str, callback) -> None:
-        """Show text preview, then run callback after PREVIEW_SECONDS."""
-        if STATE.overlay_window:
-            STATE.overlay_window.set_text(text)
-        else:
-            OverlayManager._show_impl("dictation")
-            STATE.overlay_window.set_text(text)
-        GLib.timeout_add(PREVIEW_SECONDS * 1000, callback)
 
     @staticmethod
     @run_on_main_thread
