@@ -3,6 +3,10 @@ Chat overlay using plain GTK widgets.
 
 On Wayland: uses gtk-layer-shell for proper overlay anchoring (right edge).
 On X11: uses classic GTK window hints with free positioning + drag.
+
+Width: 22% of screen width, clamped 280-440px.
+Height: 85% of screen height, clamped 400-900px.
+Inner scroll area shrinks proportionally.
 """
 from __future__ import annotations
 
@@ -11,6 +15,7 @@ from typing import Callable, Dict, List, Optional
 from linuxwhisper.config import CFG
 from linuxwhisper.platform import SESSION_TYPE
 from linuxwhisper.state import STATE
+from linuxwhisper.ui.sizing import get_monitor_geometry, chat_sizing
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -48,19 +53,19 @@ def _hex_to_css(hex_str: str) -> str:
 MSG_CSS = """
 #msg-user {{
     background: {accent};
-    color: {text_on_accent};
     border-radius: 12px 12px 12px 4px;
-    padding: 8px 14px;
-    margin: 4px 12px 4px 40px;
     font-size: 13px;
+}}
+#msg-user text {{
+    color: {text_on_accent};
 }}
 #msg-assistant {{
     background: {surface};
-    color: {text};
     border-radius: 12px 12px 4px 12px;
-    padding: 8px 14px;
-    margin: 4px 40px 4px 12px;
     font-size: 13px;
+}}
+#msg-assistant text {{
+    color: {text};
 }}
 window {{
     background-color: {bg};
@@ -71,13 +76,15 @@ class ChatOverlay(Gtk.Window):
 
     def __init__(self):
         super().__init__(type=Gtk.WindowType.TOPLEVEL)
-        self._setup_window()
+        gx, gy, mw, mh = get_monitor_geometry()
+        self.sizing = chat_sizing(mw, mh)
+        self._setup_window(gx, gy, mw, mh)
         self._setup_ui()
         self._init_animation()
         self.show_all()
 
-    def _setup_window(self) -> None:
-        """Configure window properties."""
+    def _setup_window(self, gx: int, gy: int, mw: int, mh: int) -> None:
+        """Configure window properties with dynamic sizing."""
         self.set_decorated(False)
         self.set_skip_taskbar_hint(True)
         self.set_skip_pager_hint(True)
@@ -88,7 +95,7 @@ class ChatOverlay(Gtk.Window):
         if visual and screen.is_composited():
             self.set_visual(visual)
 
-        w, h = 380, 600
+        w, h = self.sizing.width, self.sizing.height
 
         if USE_LAYER_SHELL:
             GtkLayerShell.init_for_window(self)
@@ -104,15 +111,12 @@ class ChatOverlay(Gtk.Window):
         else:
             self.set_keep_above(True)
             self.set_type_hint(Gdk.WindowTypeHint.UTILITY)
-            display = Gdk.Display.get_default()
-            monitor = display.get_primary_monitor() or display.get_monitor(0)
-            geometry = monitor.get_geometry()
-            x = geometry.x + geometry.width - w - 20
-            y = geometry.y + (geometry.height - h) // 2
+            x = gx + mw - w - 20
+            y = gy + (mh - h) // 2
             self.move(x, y)
 
+        self.set_size_request(w, -1)
         self.set_default_size(w, h)
-        self.set_size_request(w, h)
 
     def _setup_ui(self) -> None:
         """Setup scrolled message list with styled labels."""
@@ -120,7 +124,8 @@ class ChatOverlay(Gtk.Window):
 
         self.scroll = Gtk.ScrolledWindow()
         self.scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.scroll.set_size_request(340, 450)
+        self.scroll.set_propagate_natural_width(True)
+        self.scroll.set_propagate_natural_height(True)
 
         self.msg_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.msg_box.set_margin_top(12)
@@ -156,13 +161,26 @@ class ChatOverlay(Gtk.Window):
         )
 
     def _add_message_label(self, role: str, text: str) -> None:
-        """Add a message bubble to the message box."""
-        label = Gtk.Label(label=text)
-        label.set_name(f"msg-{role}")
-        label.set_line_wrap(True)
-        label.set_xalign(0 if role == "assistant" else 1)
-        label.set_max_width_chars(40)
-        self.msg_box.pack_start(label, False, False, 0)
+        """Add a message bubble to the message box using a read-only TextView."""
+        tv = Gtk.TextView()
+        tv.set_name(f"msg-{role}")
+        tv.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        tv.set_editable(False)
+        tv.set_cursor_visible(False)
+        tv.set_can_focus(False)
+        tv.get_buffer().set_text(text)
+
+        tv.set_margin_top(4)
+        tv.set_margin_bottom(4)
+        tv.set_margin_start(40 if role == "user" else 12)
+        tv.set_margin_end(12 if role == "user" else 40)
+
+        tv.set_top_margin(8)
+        tv.set_bottom_margin(8)
+        tv.set_left_margin(14)
+        tv.set_right_margin(14)
+
+        self.msg_box.pack_start(tv, False, False, 0)
         self.msg_box.show_all()
 
     def _init_animation(self) -> None:

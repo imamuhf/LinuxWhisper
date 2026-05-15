@@ -99,16 +99,36 @@ class ModeHandler:
         GLib.timeout_add(3000, OverlayManager.hide)
 
     @staticmethod
+    def _show_thinking() -> None:
+        if STATE.overlay_window:
+            STATE.overlay_window.set_text("🤖 Thinking…")
+        else:
+            from linuxwhisper.ui.recording_overlay import GtkOverlay
+            STATE.overlay_window = GtkOverlay("ai")
+            STATE.overlay_window.set_text("🤖 Thinking…")
+
+    @staticmethod
     def _handle_ai(text: str) -> None:
         """Handle AI chat mode: get response and type."""
+        ModeHandler._show_thinking()
+        threading.Thread(
+            target=ModeHandler._ai_worker,
+            args=(text,),
+            daemon=True
+        ).start()
+
+    @staticmethod
+    def _ai_worker(text: str) -> None:
         response = AIService.chat(text)
+        GLib.idle_add(lambda: ModeHandler._finish_ai(text, response))
+
+    @staticmethod
+    def _finish_ai(text: str, response: Optional[str]) -> None:
         if not response:
             return
-
         HistoryManager.add_message("user", text)
         HistoryManager.add_message("assistant", response)
         HistoryManager.add_answer(response)
-
         ClipboardService.type_text(response)
         OverlayManager.show_text(response, is_response=True)
         GLib.timeout_add(8000, OverlayManager.hide)
@@ -117,23 +137,33 @@ class ModeHandler:
     @staticmethod
     def _handle_ai_rewrite(text: str) -> None:
         """Handle AI rewrite mode: rewrite selected text based on instruction."""
+        ModeHandler._show_thinking()
         clipboard = get_clipboard()
         original = clipboard.paste().strip()
+        threading.Thread(
+            target=ModeHandler._rewrite_worker,
+            args=(text, original),
+            daemon=True
+        ).start()
+
+    @staticmethod
+    def _rewrite_worker(text: str, original: str) -> None:
         prompt = (
             f"INSTRUCTION:\n{text}\n\n"
             f"ORIGINAL TEXT:\n{original}\n\n"
             "Rewrite the original text based on the instruction. "
             "Output ONLY the finished text, without introduction or formatting."
         )
-
         response = AIService.chat(prompt)
+        GLib.idle_add(lambda: ModeHandler._finish_rewrite(text, original, response))
+
+    @staticmethod
+    def _finish_rewrite(text: str, original: str, response: Optional[str]) -> None:
         if not response:
             return
-
         HistoryManager.add_message("user", f"[Rewrite] {text}\nOriginal: {original[:200]}...")
         HistoryManager.add_message("assistant", response)
         HistoryManager.add_answer(response)
-
         ClipboardService.paste_text(response)
         OverlayManager.show_text(response, is_response=True)
         GLib.timeout_add(8000, OverlayManager.hide)
@@ -148,17 +178,27 @@ class ModeHandler:
             print("[VISION] Screenshot returned None")
             return
         print("[VISION] Screenshot OK, sending to AI...")
+        ModeHandler._show_thinking()
+        threading.Thread(
+            target=ModeHandler._vision_worker,
+            args=(text, image_b64),
+            daemon=True
+        ).start()
 
+    @staticmethod
+    def _vision_worker(text: str, image_b64: str) -> None:
         response = AIService.vision(text, image_b64)
+        GLib.idle_add(lambda: ModeHandler._finish_vision(text, response))
+
+    @staticmethod
+    def _finish_vision(text: str, response: Optional[str]) -> None:
         if not response:
             print("[VISION] AI returned None")
             return
-        print(f"[VISION] AI responded, typing...")
-
+        print("[VISION] AI responded, typing...")
         HistoryManager.add_message("user", f"[Screenshot] {text}")
         HistoryManager.add_message("assistant", response)
         HistoryManager.add_answer(response)
-
         ClipboardService.type_text(response)
         OverlayManager.show_text(response, is_response=True)
         GLib.timeout_add(8000, OverlayManager.hide)

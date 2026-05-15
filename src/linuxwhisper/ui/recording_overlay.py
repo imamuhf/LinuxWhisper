@@ -3,12 +3,17 @@ Floating recording overlay with transcription preview.
 
 On Wayland: uses gtk-layer-shell for proper overlay behaviour.
 On X11: uses classic GTK window hints (POPUP, keep-above).
+
+Sizing: content-driven. Width breathes with text (capped at ~100ch).
+Height follows naturally from wrapping — no caps, no clipping.
+Minimum width 350px prevents the narrow+tall scenario.
 """
 from __future__ import annotations
 
 from linuxwhisper.config import CFG
 from linuxwhisper.platform import SESSION_TYPE
 from linuxwhisper.state import STATE
+from linuxwhisper.ui.sizing import get_monitor_geometry, recording_sizing
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -24,7 +29,7 @@ except (ValueError, ImportError):
 
 
 class GtkOverlay(Gtk.Window):
-    """Floating recording overlay with waveform visualization."""
+    """Floating recording overlay with transcription preview."""
 
     def __init__(self, mode: str):
         # Layer-shell requires TOPLEVEL; X11 uses POPUP
@@ -35,6 +40,10 @@ class GtkOverlay(Gtk.Window):
 
         self.mode = mode
         self.config = CFG.MODES.get(mode, CFG.MODES["dictation"])
+
+        _, _, mw, mh = get_monitor_geometry()
+        self.sizing = recording_sizing(mw, mh)
+
         self._setup_window()
         self._setup_ui()
         self.show_all()
@@ -56,19 +65,25 @@ class GtkOverlay(Gtk.Window):
             GtkLayerShell.set_keyboard_mode(self, GtkLayerShell.KeyboardMode.NONE)
         else:
             self.set_keep_above(True)
-            display = Gdk.Display.get_default()
-            monitor = display.get_primary_monitor() or display.get_monitor(0)
-            geometry = monitor.get_geometry()
-            self.move((geometry.width - 500) // 2, geometry.height - 60 - 80)
-        self.set_size_request(900, 50)
+            GLib.idle_add(self._reposition_x11)
+        self.set_size_request(350, -1)
+
+    def _reposition_x11(self) -> bool:
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor() or display.get_monitor(0)
+        geometry = monitor.get_geometry()
+        alloc = self.get_allocation()
+        cx = geometry.x + (geometry.width - alloc.width) // 2
+        cy = geometry.y + geometry.height - alloc.height - 80
+        self.move(cx, cy)
+        return False
 
     def _setup_ui(self) -> None:
         label_text = f"{self.config['icon']}  {self.config['text']}"
         self.label = Gtk.Label(label=label_text)
         self.label.set_name("overlay-label")
         self.label.set_line_wrap(True)
-        self.label.set_max_width_chars(0)
-        self.label.set_hexpand(True)
+        self.label.set_max_width_chars(100)
         css = Gtk.CssProvider()
         css.load_from_data(f"""
             #overlay-label {{
@@ -83,9 +98,9 @@ class GtkOverlay(Gtk.Window):
         self.add(self.label)
 
     def set_text(self, text: str, max_chars: int = 200, is_response: bool = False) -> None:
-        """Update overlay label with text (wrapped, no truncation for responses)."""
-        if not is_response and len(text) > max_chars:
-            text = text[:max_chars] + "…"
+        limit = 500 if is_response else max_chars
+        if len(text) > limit:
+            text = text[:limit] + "…"
         self.label.set_text(text)
         css = Gtk.CssProvider()
         accent = "#10B981" if is_response else "#669bbc"
