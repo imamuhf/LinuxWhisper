@@ -67,6 +67,9 @@ class GtkOverlay(Gtk.Window):
             self.move((geometry.width - 500) // 2, geometry.height - 60 - 80)
 
         self.set_default_size(900, 50)
+        geom = Gdk.Geometry()
+        geom.max_height = 200
+        self.set_geometry_hints(None, geom, Gdk.WindowHints.MAX_SIZE)
 
     def _setup_ui(self) -> None:
         """Setup label with icon and text."""
