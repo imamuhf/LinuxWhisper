@@ -152,7 +152,6 @@ class ChatOverlay(Gtk.Window):
         """Add a message bubble to the message box."""
         label = Gtk.Label(label=text)
         label.set_name(f"msg-{role}")
-        label.set_wrap(True)
         label.set_line_wrap(True)
         label.set_xalign(0 if role == "assistant" else 1)
         label.set_max_width_chars(30)
