@@ -142,7 +142,7 @@ class Config:
     HOTKEY_DEFS: Dict[str, Tuple[str, int, List[int]]] = field(default_factory=lambda: {
         "dictation":  ("R-Alt / F3",       ecodes.KEY_RIGHTALT,  [ecodes.KEY_F3, ecodes.KEY_F13]),
         "dictation_terminal": ("R-Ctrl",  ecodes.KEY_RIGHTCTRL, []),
-        "ai":         ("F4",  ecodes.KEY_F4,  [ecodes.KEY_F14]),
+        "ai":         ("F6",  ecodes.KEY_F6,  [ecodes.KEY_F14]),
         "ai_rewrite": ("F7",  ecodes.KEY_F7,  [ecodes.KEY_PREVIOUSSONG]),
         "vision":     ("F8",  ecodes.KEY_F8,  [ecodes.KEY_PLAYPAUSE]),
         "pin":        ("F9",  ecodes.KEY_F9,  [ecodes.KEY_NEXTSONG]),

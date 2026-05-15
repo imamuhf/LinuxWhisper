@@ -26,7 +26,7 @@ def main() -> None:
     descriptions = {
         "dictation": "Live dictation at cursor (Whisper V3)",
         "dictation_terminal": "Terminal dictation (Ctrl+Shift+V)",
-        "ai": "Empathic AI question (Groq Moonshot)",
+        "ai": "AI Chat (F6)",
         "ai_rewrite": "Smart Rewrite - Highlight text & speak to edit",
         "vision": "Empathic Vision / Screenshot (Groq Llama 4)",
         "pin": "Toggle Chat Overlay Pin Mode",
