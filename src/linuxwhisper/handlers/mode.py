@@ -146,13 +146,18 @@ class ModeHandler:
     @staticmethod
     def _handle_vision(text: str) -> None:
         """Handle vision mode: screenshot + AI analysis."""
+        print("[VISION] Taking screenshot...")
         image_b64 = ImageService.take_screenshot()
         if not image_b64:
+            print("[VISION] Screenshot returned None")
             return
+        print("[VISION] Screenshot OK, sending to AI...")
 
         response = AIService.vision(text, image_b64)
         if not response:
+            print("[VISION] AI returned None")
             return
+        print(f"[VISION] AI responded, typing...")
 
         # Update histories
         HistoryManager.add_message("user", f"[Screenshot] {text}")
