@@ -66,13 +66,16 @@ class GtkOverlay(Gtk.Window):
             geometry = monitor.get_geometry()
             self.move((geometry.width - 500) // 2, geometry.height - 60 - 80)
 
+        self.set_default_size(900, 300)
+
     def _setup_ui(self) -> None:
         """Setup label with icon and text."""
         label_text = f"{self.config['icon']}  {self.config['text']}"
         self.label = Gtk.Label(label=label_text)
         self.label.set_name("overlay-label")
         self.label.set_line_wrap(True)
-        self.label.set_max_width_chars(0)
+        self.label.set_hexpand(True)
+        self.label.set_halign(Gtk.Align.FILL)
         css = Gtk.CssProvider()
         css.load_from_data(f"""
             #overlay-label {{
@@ -92,7 +95,6 @@ class GtkOverlay(Gtk.Window):
         if not is_response and len(text) > max_chars:
             text = text[:max_chars] + "…"
         self.label.set_text(text)
-        self.set_size_request(900, -1)
         css = Gtk.CssProvider()
         accent = "#10B981" if is_response else "#669bbc"
         bg = "rgba(0, 20, 40, 0.92)" if is_response else "rgba(0, 48, 73, 0.92)"
