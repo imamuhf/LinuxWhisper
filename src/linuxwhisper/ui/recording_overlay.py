@@ -34,6 +34,7 @@ class GtkOverlay(Gtk.Window):
     """Floating recording overlay with waveform visualization."""
 
     def __init__(self, mode: str):
+        print(f"[DEBUG] GtkOverlay.__init__ mode={mode} layer={HAS_LAYER_SHELL} session={SESSION_TYPE}")
         # Layer-shell requires TOPLEVEL; X11 uses POPUP
         if HAS_LAYER_SHELL and SESSION_TYPE == "wayland":
             super().__init__(type=Gtk.WindowType.TOPLEVEL)
@@ -45,6 +46,7 @@ class GtkOverlay(Gtk.Window):
         self._setup_window()
         self._setup_ui()
         self.show_all()
+        print(f"[DEBUG] GtkOverlay shown")
 
     def _setup_window(self) -> None:
         """Configure window properties."""
@@ -88,11 +90,23 @@ class GtkOverlay(Gtk.Window):
         self.set_default_size(w, h)
 
     def _setup_ui(self) -> None:
-        """Setup drawing area and animation."""
-        self.drawing_area = Gtk.DrawingArea()
-        self.drawing_area.connect("draw", self._on_draw)
-        self.add(self.drawing_area)
-        self.timeout_id = GLib.timeout_add(40, self._animate)
+        """Setup label with icon and text."""
+        label_text = f"{self.config['icon']}  {self.config['text']}"
+        self.label = Gtk.Label(label=label_text)
+        self.label.set_name("overlay-label")
+        css = Gtk.CssProvider()
+        css.load_from_data(f"""
+            #overlay-label {{
+                background: rgba(0, 48, 73, 0.92);
+                border-radius: 15px;
+                padding: 10px 25px;
+                font-size: 14px;
+                color: #669bbc;
+            }}
+        """.encode())
+        style = self.label.get_style_context()
+        style.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.add(self.label)
 
     def _on_draw(self, widget: Gtk.DrawingArea, cr: cairo.Context) -> None:
         """Draw overlay content."""
@@ -189,7 +203,4 @@ class GtkOverlay(Gtk.Window):
 
     def close(self) -> None:
         """Clean up and destroy."""
-        if self.timeout_id:
-            GLib.source_remove(self.timeout_id)
-            self.timeout_id = None
         self.destroy()
