@@ -170,21 +170,23 @@ class WaylandScreenshot(ScreenshotBackend):
     """Screenshot using available Wayland capture tool."""
 
     def take_screenshot(self, output_path: str) -> bool:
-        # grim (wlr-screencopy) — wlroots compositors (Niri, Sway, Hyprland)
         for cmd in (
             ["grim", output_path],
             ["spectacle", "-b", "-f", "-o", output_path],
         ):
             try:
                 result = subprocess.run(
-                    cmd,
-                    capture_output=True, timeout=10,
+                    cmd, capture_output=True, timeout=10,
                 )
                 if result.returncode == 0:
                     return True
+                logger.debug("Screenshot cmd %s failed (rc=%d): %s",
+                             cmd[0], result.returncode, result.stderr.strip())
             except FileNotFoundError:
+                logger.debug("Screenshot tool %s not found", cmd[0])
                 continue
-            except Exception:
-                continue
-        logger.debug("No screenshot tool available (grim/spectacle)")
+            except subprocess.TimeoutExpired:
+                logger.debug("Screenshot tool %s timed out", cmd[0])
+            except Exception as e:
+                logger.debug("Screenshot tool %s error: %s", cmd[0], e)
         return False
