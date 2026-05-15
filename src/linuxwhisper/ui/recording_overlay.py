@@ -44,47 +44,35 @@ class GtkOverlay(Gtk.Window):
         self.set_app_paintable(True)
         self.set_decorated(False)
 
-        # Enable transparency
         screen = self.get_screen()
         visual = screen.get_rgba_visual()
         if visual and screen.is_composited():
             self.set_visual(visual)
 
-        w, h = 500, 60
-
         if HAS_LAYER_SHELL and SESSION_TYPE == "wayland":
-            # --- Wayland: gtk-layer-shell ---
             GtkLayerShell.init_for_window(self)
             GtkLayerShell.set_layer(self, GtkLayerShell.Layer.OVERLAY)
             GtkLayerShell.set_namespace(self, "linuxwhisper-recording")
             GtkLayerShell.set_exclusive_zone(self, -1)
-
-            # Anchor to bottom center
             GtkLayerShell.set_anchor(self, GtkLayerShell.Edge.BOTTOM, True)
             GtkLayerShell.set_margin(self, GtkLayerShell.Edge.BOTTOM, 80)
-
-            # No keyboard interaction needed
             GtkLayerShell.set_keyboard_mode(
                 self, GtkLayerShell.KeyboardMode.NONE
             )
         else:
-            # --- X11: classic approach ---
             self.set_keep_above(True)
-
             display = Gdk.Display.get_default()
             monitor = display.get_primary_monitor() or display.get_monitor(0)
             geometry = monitor.get_geometry()
-            x = (geometry.width - w) // 2
-            y = geometry.height - h - 80
-            self.move(x, y)
-
-        self.set_default_size(w, h)
+            self.move((geometry.width - 500) // 2, geometry.height - 60 - 80)
 
     def _setup_ui(self) -> None:
         """Setup label with icon and text."""
         label_text = f"{self.config['icon']}  {self.config['text']}"
         self.label = Gtk.Label(label=label_text)
         self.label.set_name("overlay-label")
+        self.label.set_line_wrap(True)
+        self.label.set_max_width_chars(50)
         css = Gtk.CssProvider()
         css.load_from_data(f"""
             #overlay-label {{
@@ -99,9 +87,9 @@ class GtkOverlay(Gtk.Window):
         style.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         self.add(self.label)
 
-    def set_text(self, text: str, max_chars: int = 60, is_response: bool = False) -> None:
-        """Update overlay label with transcribed text (truncated)."""
-        if len(text) > max_chars:
+    def set_text(self, text: str, max_chars: int = 200, is_response: bool = False) -> None:
+        """Update overlay label with text (wrapped, no truncation for responses)."""
+        if not is_response and len(text) > max_chars:
             text = text[:max_chars] + "…"
         self.label.set_text(text)
         css = Gtk.CssProvider()

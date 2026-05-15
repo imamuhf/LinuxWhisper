@@ -110,7 +110,7 @@ class ModeHandler:
         HistoryManager.add_answer(response)
 
         ClipboardService.type_text(response)
-        OverlayManager.show_text(response[:100], is_response=True)
+        OverlayManager.show_text(response, is_response=True)
         GLib.timeout_add(8000, OverlayManager.hide)
         TTSService.speak(response)
 
@@ -135,7 +135,7 @@ class ModeHandler:
         HistoryManager.add_answer(response)
 
         ClipboardService.paste_text(response)
-        OverlayManager.show_text(response[:100], is_response=True)
+        OverlayManager.show_text(response, is_response=True)
         GLib.timeout_add(8000, OverlayManager.hide)
         TTSService.speak(response)
 
@@ -160,6 +160,6 @@ class ModeHandler:
         HistoryManager.add_answer(response)
 
         ClipboardService.type_text(response)
-        OverlayManager.show_text(response[:100], is_response=True)
+        OverlayManager.show_text(response, is_response=True)
         GLib.timeout_add(8000, OverlayManager.hide)
         TTSService.speak(response)
