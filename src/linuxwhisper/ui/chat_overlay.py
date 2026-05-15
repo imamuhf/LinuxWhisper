@@ -112,6 +112,7 @@ class ChatOverlay(Gtk.Window):
             self.move(x, y)
 
         self.set_default_size(w, h)
+        self.set_size_request(w, h)
 
     def _setup_ui(self) -> None:
         """Setup scrolled message list with styled labels."""
@@ -119,7 +120,7 @@ class ChatOverlay(Gtk.Window):
 
         self.scroll = Gtk.ScrolledWindow()
         self.scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.scroll.set_size_request(-1, -1)
+        self.scroll.set_size_request(340, 450)
 
         self.msg_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.msg_box.set_margin_top(12)
