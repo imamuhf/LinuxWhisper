@@ -31,12 +31,19 @@ class KeyboardHandler:
     """Global keyboard listener using evdev (works on X11 + Wayland)."""
 
     # Build a flat lookup: keycode -> mode_id
-    # for all recording modes + toggle actions
     _KEY_TO_MODE: Dict[int, str] = {}
     for mode_id, (_, primary, extras) in CFG.HOTKEY_DEFS.items():
         _KEY_TO_MODE[primary] = mode_id
         for extra in extras:
             _KEY_TO_MODE[extra] = mode_id
+
+    # Modifier keys that suppress hotkeys when held
+    _MODIFIERS: set = {
+        ecodes.KEY_LEFTALT, ecodes.KEY_RIGHTALT,
+        ecodes.KEY_LEFTCTRL, ecodes.KEY_RIGHTCTRL,
+        ecodes.KEY_LEFTSHIFT, ecodes.KEY_RIGHTSHIFT,
+        ecodes.KEY_LEFTMETA, ecodes.KEY_RIGHTMETA,
+    }
 
     @classmethod
     def _find_keyboards(cls) -> List[InputDevice]:
@@ -66,9 +73,6 @@ class KeyboardHandler:
 
     @classmethod
     def _get_mode_for_keycode(cls, keycode: int) -> Optional[str]:
-        """Get mode name for a keycode, if any."""
-        if keycode in (ecodes.KEY_LEFTALT, ecodes.KEY_LEFTCTRL):
-            return None
         return cls._KEY_TO_MODE.get(keycode)
 
     @classmethod
@@ -76,22 +80,35 @@ class KeyboardHandler:
         """Check if a mode triggers audio recording."""
         return mode in CFG.MODES
 
+    _held_mods: set = set()
+
     @classmethod
     def _handle_key_event(cls, event: evdev.InputEvent) -> None:
         """Process a single key event."""
         key_event = categorize(event)
         keycode = event.code
+        is_down = key_event.keystate == key_event.key_down
+        is_up = key_event.keystate == key_event.key_up
+
+        # Track modifier state
+        if keycode in cls._MODIFIERS:
+            if is_down:
+                cls._held_mods.add(keycode)
+            elif is_up:
+                cls._held_mods.discard(keycode)
+            return
+
+        # Suppress hotkeys when modifier is held (e.g. Alt+F4 is system, not ours)
+        if is_down and cls._held_mods:
+            return
 
         mode = cls._get_mode_for_keycode(keycode)
         if mode is None:
             return
 
-        # Key DOWN
-        if key_event.keystate == key_event.key_down:
+        if is_down:
             cls._on_press(mode)
-
-        # Key UP
-        elif key_event.keystate == key_event.key_up:
+        elif is_up:
             cls._on_release(mode)
 
     @classmethod
