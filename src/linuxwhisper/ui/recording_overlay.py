@@ -68,7 +68,7 @@ class GtkOverlay(Gtk.Window):
 
         self.set_default_size(900, 50)
         geom = Gdk.Geometry()
-        geom.max_height = 600
+        geom.max_height = 300
         self.set_geometry_hints(None, geom, Gdk.WindowHints.MAX_SIZE)
 
     def _setup_ui(self) -> None:
