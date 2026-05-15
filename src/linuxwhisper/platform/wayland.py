@@ -170,22 +170,37 @@ class WaylandScreenshot(ScreenshotBackend):
     """Screenshot using available Wayland capture tool."""
 
     def take_screenshot(self, output_path: str) -> bool:
-        for cmd in (
-            ["grim", output_path],
-            ["spectacle", "-b", "-f", "-o", output_path],
-        ):
-            try:
-                result = subprocess.run(
-                    cmd, capture_output=True, timeout=10,
-                )
-                if result.returncode == 0:
-                    return True
-                print(f"⚠️ Screenshot {cmd[0]} failed (rc={result.returncode}): {result.stderr.strip()}")
-            except FileNotFoundError:
-                print(f"⚠️ Screenshot tool {cmd[0]} not found")
-                continue
-            except subprocess.TimeoutExpired:
-                print(f"⚠️ Screenshot tool {cmd[0]} timed out")
-            except Exception as e:
-                print(f"⚠️ Screenshot tool {cmd[0]} error: {e}")
+        # grim (wlroots compositors) — capture pipes OK
+        try:
+            r = subprocess.run(
+                ["grim", output_path],
+                capture_output=True, timeout=10,
+            )
+            if r.returncode == 0:
+                return True
+            print(f"⚠️ grim failed: {r.stderr.strip().decode()}")
+        except FileNotFoundError:
+            pass
+        except subprocess.TimeoutExpired:
+            pass
+        except Exception as e:
+            print(f"⚠️ grim error: {e}")
+
+        # spectacle (KDE) — hangs with pipes, use DEVNULL
+        try:
+            r = subprocess.run(
+                ["spectacle", "-b", "-f", "-o", output_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=15,
+            )
+            if r.returncode == 0:
+                return True
+            print(f"⚠️ spectacle failed (rc={r.returncode})")
+        except FileNotFoundError:
+            print("⚠️ spectacle not found — install spectacle for KDE screenshots")
+        except subprocess.TimeoutExpired:
+            print("⚠️ spectacle timed out")
+        except Exception as e:
+            print(f"⚠️ spectacle error: {e}")
         return False
