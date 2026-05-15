@@ -72,7 +72,7 @@ class GtkOverlay(Gtk.Window):
         self.label = Gtk.Label(label=label_text)
         self.label.set_name("overlay-label")
         self.label.set_line_wrap(True)
-        self.label.set_max_width_chars(50)
+        self.label.set_max_width_chars(70)
         css = Gtk.CssProvider()
         css.load_from_data(f"""
             #overlay-label {{
