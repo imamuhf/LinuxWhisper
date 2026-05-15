@@ -142,14 +142,17 @@ class KeyboardHandler:
 
     @classmethod
     def _stop_and_process(cls) -> None:
-        """Stop recording, transcribe, and process result."""
-        OverlayManager.hide()
+        """Stop recording, transcribe, show preview, then process result."""
+        OverlayManager.show_text("Transcribing...")
         audio_data = AudioService.stop_recording()
 
         if audio_data is not None:
             transcribed = AudioService.transcribe(audio_data)
             if transcribed:
-                ModeHandler.process(STATE.current_mode, transcribed)
+                def _process_and_hide():
+                    ModeHandler.process(STATE.current_mode, transcribed)
+                    OverlayManager.hide()
+                OverlayManager.show_preview(transcribed, _process_and_hide)
 
     @classmethod
     def run(cls) -> None:

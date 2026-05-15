@@ -11,6 +11,9 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import GLib
 
 
+PREVIEW_SECONDS = 2
+
+
 class OverlayManager:
     """Manages recording overlay visibility."""
 
@@ -22,7 +25,6 @@ class OverlayManager:
 
     @staticmethod
     def _show_impl(mode: str) -> None:
-        # Late import to avoid circular dependency
         from linuxwhisper.ui.recording_overlay import GtkOverlay
         if STATE.overlay_window:
             try:
@@ -30,6 +32,27 @@ class OverlayManager:
             except Exception:
                 pass
         STATE.overlay_window = GtkOverlay(mode)
+
+    @staticmethod
+    @run_on_main_thread
+    def show_text(text: str) -> None:
+        """Update overlay with transcribed text preview."""
+        if STATE.overlay_window:
+            STATE.overlay_window.set_text(text)
+        else:
+            OverlayManager._show_impl("dictation")
+            STATE.overlay_window.set_text(text)
+
+    @staticmethod
+    @run_on_main_thread
+    def show_preview(text: str, callback) -> None:
+        """Show text preview, then run callback after PREVIEW_SECONDS."""
+        if STATE.overlay_window:
+            STATE.overlay_window.set_text(text)
+        else:
+            OverlayManager._show_impl("dictation")
+            STATE.overlay_window.set_text(text)
+        GLib.timeout_add(PREVIEW_SECONDS * 1000, callback)
 
     @staticmethod
     @run_on_main_thread
