@@ -40,15 +40,12 @@ class GtkOverlay(Gtk.Window):
         self.show_all()
 
     def _setup_window(self) -> None:
-        """Configure window properties."""
         self.set_app_paintable(True)
         self.set_decorated(False)
-
         screen = self.get_screen()
         visual = screen.get_rgba_visual()
         if visual and screen.is_composited():
             self.set_visual(visual)
-
         if HAS_LAYER_SHELL and SESSION_TYPE == "wayland":
             GtkLayerShell.init_for_window(self)
             GtkLayerShell.set_layer(self, GtkLayerShell.Layer.OVERLAY)
@@ -56,24 +53,22 @@ class GtkOverlay(Gtk.Window):
             GtkLayerShell.set_exclusive_zone(self, -1)
             GtkLayerShell.set_anchor(self, GtkLayerShell.Edge.BOTTOM, True)
             GtkLayerShell.set_margin(self, GtkLayerShell.Edge.BOTTOM, 80)
-            GtkLayerShell.set_keyboard_mode(
-                self, GtkLayerShell.KeyboardMode.NONE
-            )
+            GtkLayerShell.set_keyboard_mode(self, GtkLayerShell.KeyboardMode.NONE)
         else:
             self.set_keep_above(True)
             display = Gdk.Display.get_default()
             monitor = display.get_primary_monitor() or display.get_monitor(0)
             geometry = monitor.get_geometry()
             self.move((geometry.width - 500) // 2, geometry.height - 60 - 80)
+        self.set_size_request(900, 50)
 
     def _setup_ui(self) -> None:
-        """Setup label in scrolled window (max 300px visible)."""
         label_text = f"{self.config['icon']}  {self.config['text']}"
         self.label = Gtk.Label(label=label_text)
         self.label.set_name("overlay-label")
         self.label.set_line_wrap(True)
+        self.label.set_max_width_chars(0)
         self.label.set_hexpand(True)
-        self.label.set_halign(Gtk.Align.FILL)
         css = Gtk.CssProvider()
         css.load_from_data(f"""
             #overlay-label {{
@@ -84,15 +79,8 @@ class GtkOverlay(Gtk.Window):
                 color: #669bbc;
             }}
         """.encode())
-        style = self.label.get_style_context()
-        style.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-
-        self.scroll = Gtk.ScrolledWindow()
-        self.scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.scroll.set_min_content_height(50)
-        self.scroll.set_max_content_height(300)
-        self.scroll.add(self.label)
-        self.add(self.scroll)
+        self.label.get_style_context().add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.add(self.label)
 
     def set_text(self, text: str, max_chars: int = 200, is_response: bool = False) -> None:
         """Update overlay label with text (wrapped, no truncation for responses)."""
