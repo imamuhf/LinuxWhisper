@@ -66,13 +66,8 @@ class GtkOverlay(Gtk.Window):
             geometry = monitor.get_geometry()
             self.move((geometry.width - 500) // 2, geometry.height - 60 - 80)
 
-        self.set_default_size(900, 50)
-        geom = Gdk.Geometry()
-        geom.max_height = 300
-        self.set_geometry_hints(None, geom, Gdk.WindowHints.MAX_SIZE)
-
     def _setup_ui(self) -> None:
-        """Setup label with icon and text."""
+        """Setup label in scrolled window (max 300px visible)."""
         label_text = f"{self.config['icon']}  {self.config['text']}"
         self.label = Gtk.Label(label=label_text)
         self.label.set_name("overlay-label")
@@ -91,7 +86,13 @@ class GtkOverlay(Gtk.Window):
         """.encode())
         style = self.label.get_style_context()
         style.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        self.add(self.label)
+
+        self.scroll = Gtk.ScrolledWindow()
+        self.scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scroll.set_min_content_height(50)
+        self.scroll.set_max_content_height(300)
+        self.scroll.add(self.label)
+        self.add(self.scroll)
 
     def set_text(self, text: str, max_chars: int = 200, is_response: bool = False) -> None:
         """Update overlay label with text (wrapped, no truncation for responses)."""
