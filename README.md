@@ -55,7 +55,8 @@ The app auto-detects your session type (X11 or Wayland) and uses the appropriate
 
 | Key | Action | Purpose |
 |:---:|:---|:---|
-| `F3` | **Dictate** | Transcribe voice to text at cursor |
+| `R-Alt` / `F3` | **Dictate** | Transcribe voice to text at cursor |
+| `R-Ctrl` | **Term Dictate** | Dictate into terminal (Ctrl+Shift+V) |
 | `F4` | **Chat** | Open/Focus AI conversation |
 | `F7` | **Rewrite** | Highlight text → Speak to modify |
 | `F8` | **Vision** | Screenshot + Intelligent Analysis |
@@ -77,7 +78,7 @@ The app auto-detects your session type (X11 or Wayland) and uses the appropriate
 
 ### 2. Installation
 ```bash
-git clone https://github.com/Dianjeol/LinuxWhisper.git && cd LinuxWhisper
+git clone https://github.com/imamuhf/LinuxWhisper.git && cd LinuxWhisper
 ./setup.sh
 ```
 
@@ -97,6 +98,49 @@ python -m linuxwhisper
 
 > [!TIP]
 > Use the **System Tray** icon or the ⚙️ icon in the chat overlay to adjust TTS voices and preferences.
+
+---
+
+## 🔧 Wayland Clipboard-Paste Bridge (KDE Plasma 6 Workaround)
+
+On **KDE Plasma 6 (Wayland)**, the `zwp_virtual_keyboard_v1` protocol is restricted, blocking tools like `wtype`. This fork implements a **clipboard-paste bridge** using raw kernel scancodes as a workaround.
+
+### How it works
+
+Rather than injecting keystrokes via Wayland protocols (blocked), the program:
+
+1. **Stores transcribed text** to the Wayland clipboard via `wl-copy`
+2. **Sends raw scancodes** via `ydotool` — writing directly to `/dev/uinput` at the kernel level, completely bypassing Wayland
+
+This approach is:
+- **Layout-agnostic** — raw scancodes for `Ctrl+V` work regardless of keyboard layout
+- **Unicode-safe** — clipboard handles Korean, Japanese, Arabic, Hebrew, etc.
+- **Fast** — pastes entire paragraphs instantly vs. character-by-character injection
+
+### Requirements
+
+```bash
+# ydotool daemon (auto-started by LinuxWhisper on first use)
+sudo pacman -S ydotool
+
+# uinput permissions (one-time setup)
+echo 'KERNEL=="uinput", GROUP="input", MODE="0660"' | sudo tee /etc/udev/rules.d/99-uinput.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# You must be in the 'input' group
+sudo usermod -aG input $USER
+```
+
+### Key simulation reference
+
+| Action | Raw scancodes |
+|--------|--------------|
+| `Ctrl+V` | `ydotool key 29:1 47:1 47:0 29:0` |
+| `Ctrl+C` | `ydotool key 29:1 46:1 46:0 29:0` |
+| `Ctrl+Shift+V` | `ydotool key 29:1 42:1 47:1 47:0 42:0 29:0` |
+| `Ctrl+Shift+C` | `ydotool key 29:1 42:1 46:1 46:0 42:0 29:0` |
+
+`29` = Left Ctrl, `42` = Left Shift, `46` = C, `47` = V | `:1` = press, `:0` = release
 
 ---
 
