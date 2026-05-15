@@ -97,6 +97,21 @@ class TrayManager:
         toggle_mode.connect("toggled", TrayManager._toggle_mode)
         menu.append(toggle_mode)
 
+        # Model submenu
+        model_menu = Gtk.Menu()
+        model_group = []
+        for i, model in enumerate(CFG.WHISPER_MODELS):
+            item = Gtk.RadioMenuItem(group=model_group, label=model)
+            model_group.append(item)
+            if model == STATE.whisper_model:
+                item.set_active(True)
+            item.connect("toggled", TrayManager._toggle_model, model)
+            model_menu.append(item)
+
+        model_item = Gtk.MenuItem(label="Dictation Model")
+        model_item.set_submenu(model_menu)
+        menu.append(model_item)
+
         # Settings
         settings_item = Gtk.MenuItem(label="Settings")
         settings_item.connect("activate", lambda w: SettingsDialog.show())
@@ -133,6 +148,16 @@ class TrayManager:
             ChatManager._destroy()
         else:
             ChatManager.refresh_overlay()
+
+    @staticmethod
+    def _toggle_model(widget, model: str) -> None:
+        """Switch dictation model from tray."""
+        if not widget.get_active():
+            return
+        STATE.whisper_model = model
+        print(f"🎙️ Dictation model switched to: {model}")
+        from linuxwhisper.state import SettingsManager
+        SettingsManager.save(STATE)
 
     @staticmethod
     def _toggle_mode(widget) -> None:
