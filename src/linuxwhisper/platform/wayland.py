@@ -180,13 +180,12 @@ class WaylandScreenshot(ScreenshotBackend):
                 )
                 if result.returncode == 0:
                     return True
-                logger.debug("Screenshot cmd %s failed (rc=%d): %s",
-                             cmd[0], result.returncode, result.stderr.strip())
+                print(f"⚠️ Screenshot {cmd[0]} failed (rc={result.returncode}): {result.stderr.strip()}")
             except FileNotFoundError:
-                logger.debug("Screenshot tool %s not found", cmd[0])
+                print(f"⚠️ Screenshot tool {cmd[0]} not found")
                 continue
             except subprocess.TimeoutExpired:
-                logger.debug("Screenshot tool %s timed out", cmd[0])
+                print(f"⚠️ Screenshot tool {cmd[0]} timed out")
             except Exception as e:
-                logger.debug("Screenshot tool %s error: %s", cmd[0], e)
+                print(f"⚠️ Screenshot tool {cmd[0]} error: {e}")
         return False
