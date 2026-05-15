@@ -73,6 +73,7 @@ class ModeHandler:
 
         handlers = {
             "dictation": ModeHandler._handle_dictation,
+            "dictation_terminal": ModeHandler._handle_dictation_terminal,
             "ai": ModeHandler._handle_ai,
             "ai_rewrite": ModeHandler._handle_ai_rewrite,
             "vision": ModeHandler._handle_vision,
@@ -87,6 +88,13 @@ class ModeHandler:
         HistoryManager.add_answer(f"[Dictation] {text}")
         ChatManager.add_message("user", f"🎤 {text}")
         ClipboardService.type_text(text)
+
+    @staticmethod
+    def _handle_dictation_terminal(text: str) -> None:
+        """Handle terminal dictation: transcribe and type (Ctrl+Shift+V)."""
+        HistoryManager.add_answer(f"[Term Dictation] {text}")
+        ChatManager.add_message("user", f"💻 {text}")
+        ClipboardService.type_text(text, is_terminal=True)
 
     @staticmethod
     def _handle_ai(text: str) -> None:

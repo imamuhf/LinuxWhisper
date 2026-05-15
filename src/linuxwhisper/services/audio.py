@@ -84,7 +84,7 @@ class AudioService:
         wav_buffer.seek(0)
 
         transcript = GROQ_CLIENT.audio.transcriptions.create(
-            model=CFG.MODEL_WHISPER,
+            model=STATE.whisper_model,
             file=wav_buffer
         )
         return transcript.text.strip()

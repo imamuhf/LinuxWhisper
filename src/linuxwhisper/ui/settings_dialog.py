@@ -61,6 +61,20 @@ class SettingsDialog:
         voice_combo.connect("changed", cls._on_voice_changed)
         vbox.pack_start(voice_combo, False, False, 0)
 
+        # --- Whisper Model Section ---
+        model_label = Gtk.Label()
+        model_label.set_halign(Gtk.Align.START)
+        model_label.set_markup("<b>Dictation Model</b>")
+        vbox.pack_start(model_label, False, False, 5)
+
+        model_combo = Gtk.ComboBoxText()
+        for m in CFG.WHISPER_MODELS:
+            model_combo.append_text(m)
+        active = list(CFG.WHISPER_MODELS).index(STATE.whisper_model) if STATE.whisper_model in CFG.WHISPER_MODELS else 0
+        model_combo.set_active(active)
+        model_combo.connect("changed", cls._on_model_changed)
+        vbox.pack_start(model_combo, False, False, 0)
+
         # --- Color Scheme Gallery ---
         scheme_label = Gtk.Label()
         scheme_label.set_halign(Gtk.Align.START)
@@ -143,6 +157,13 @@ class SettingsDialog:
         voice = combo.get_active_text().lower()
         STATE.tts_voice = voice
         print(f"🎙️ Voice changed to: {voice}")
+        SettingsManager.save(STATE)
+
+    @staticmethod
+    def _on_model_changed(combo: Gtk.ComboBoxText) -> None:
+        model = combo.get_active_text()
+        STATE.whisper_model = model
+        print(f"🎙️ Dictation model changed to: {model}")
         SettingsManager.save(STATE)
 
     @staticmethod

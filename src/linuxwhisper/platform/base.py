@@ -37,6 +37,17 @@ class InputBackend(ABC):
         Simulate a copy keystroke (Ctrl+C or Ctrl+Shift+C for terminals).
         """
 
+    def type_text(self, text: str, is_terminal: bool = False) -> None:
+        """
+        Type text at the cursor.
+
+        *is_terminal=True* uses Ctrl+Shift+V instead of Ctrl+V.
+        Platform implementations SHOULD override this for better UX.
+        The base implementation raises NotImplementedError; the caller
+        falls back to clipboard copy + simulate_paste.
+        """
+        raise NotImplementedError("type_text not supported by this backend")
+
     @abstractmethod
     def is_terminal_focused(self) -> bool:
         """

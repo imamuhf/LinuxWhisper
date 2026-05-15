@@ -57,6 +57,7 @@ class SettingsManager:
                 "chat_pinned": state.chat_pinned,
                 "chat_enabled": state.chat_enabled,
                 "toggle_mode": state.toggle_mode,
+                "whisper_model": state.whisper_model,
             }
             with open(CFG.SETTINGS_FILE, "w") as f:
                 json.dump(data, f, indent=4)
@@ -103,6 +104,9 @@ class AppState:
     # --- Hotkey Mode ---
     toggle_mode: bool = False  # False = hold-to-record, True = press-to-toggle
 
+    # --- Whisper Model ---
+    whisper_model: str = CFG.MODEL_WHISPER
+
     # --- UI Theme ---
     color_scheme: str = CFG.DEFAULT_SCHEME
 
@@ -128,6 +132,8 @@ class AppState:
             self.chat_enabled = saved["chat_enabled"]
         if "toggle_mode" in saved:
             self.toggle_mode = saved["toggle_mode"]
+        if "whisper_model" in saved:
+            self.whisper_model = saved["whisper_model"]
 
 
 # Global state instance

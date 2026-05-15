@@ -332,7 +332,7 @@ class ChatOverlay(Gtk.Window):
         if USE_LAYER_SHELL:
             # --- Wayland: gtk-layer-shell ---
             GtkLayerShell.init_for_window(self)
-            GtkLayerShell.set_layer(self, GtkLayerShell.Layer.TOP)
+            GtkLayerShell.set_layer(self, GtkLayerShell.Layer.OVERLAY)
             GtkLayerShell.set_namespace(self, "linuxwhisper-chat")
 
             # Anchor to right edge, vertically centered via margins

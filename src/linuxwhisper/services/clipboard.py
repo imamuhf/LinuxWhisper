@@ -16,29 +16,22 @@ class ClipboardService:
     """Clipboard operations for typing and pasting text."""
 
     @staticmethod
-    def type_text(text: str) -> None:
-        """Paste text at cursor via clipboard (fast)."""
+    def type_text(text: str, is_terminal: bool = False) -> None:
+        """Type text at cursor via clipboard-paste bridge."""
         if not text:
             return
 
-        clipboard = get_clipboard()
         inp = get_input()
+        clipboard = get_clipboard()
 
-        # Save original clipboard
         try:
             original = clipboard.paste()
         except Exception:
             original = None
 
-        # Add leading space to prevent word merging
         clean_text = f" {text.strip()}" if not text.startswith(" ") else text
+        inp.type_text(clean_text, is_terminal=is_terminal)
 
-        # Paste via clipboard — use correct shortcut for terminals
-        clipboard.copy(clean_text)
-        is_term = inp.is_terminal_focused()
-        inp.simulate_paste(is_terminal=is_term)
-
-        # Restore original clipboard after short delay
         time.sleep(0.1)
         if original is not None:
             try:
@@ -62,5 +55,6 @@ class ClipboardService:
         clipboard = get_clipboard()
         inp = get_input()
         clipboard.copy(text)
+        time.sleep(0.15)  # let wl-clip-persist re-offer data
         is_term = inp.is_terminal_focused()
         inp.simulate_paste(is_terminal=is_term)

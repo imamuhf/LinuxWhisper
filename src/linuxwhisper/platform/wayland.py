@@ -1,16 +1,21 @@
 """
 Wayland platform backends.
 
-Uses: wtype, wl-copy, wl-paste, grim
+Uses: ydotool, wl-copy, wl-paste, grim
 Compositor-specific: niri msg (optional, for terminal detection)
 """
 from __future__ import annotations
 
 import json
+import logging
+import os
 import subprocess
+import time
 from typing import Tuple
 
 from linuxwhisper.platform.base import ClipboardBackend, InputBackend, ScreenshotBackend
+
+logger = logging.getLogger(__name__)
 
 # Terminal app-ids matched against focused window info (lowercase).
 _TERMINAL_KEYWORDS: Tuple[str, ...] = (
@@ -46,32 +51,96 @@ class WaylandClipboard(ClipboardBackend):
 
 
 class WaylandInput(InputBackend):
-    """Input simulation via wtype (Wayland)."""
+    """Input simulation via ydotool raw scancodes (Wayland).
+
+    Uses a clipboard-paste bridge: wl-copy → ydotool key (raw scancodes).
+    Raw scancodes bypass Wayland protocol restrictions (zwp_virtual_keyboard_v1)
+    that block named keys like ``ctrl+v`` on KDE Plasma 6.
+
+    ydotool requires its daemon (ydotoold) running. We attempt to
+    auto-start it on init if not already running.
+    """
+
+    # Raw scancodes (kernel keycodes, layout-agnostic):
+    #   29 = Left Ctrl, 42 = Left Shift, 46 = C, 47 = V
+    _CTRL_V = ["29:1", "47:1", "47:0", "29:0"]
+    _CTRL_C = ["29:1", "46:1", "46:0", "29:0"]
+    _CTRL_SHIFT_V = ["29:1", "42:1", "47:1", "47:0", "42:0", "29:0"]
+    _CTRL_SHIFT_C = ["29:1", "42:1", "46:1", "46:0", "42:0", "29:0"]
+
+    def __init__(self) -> None:
+        self._ensure_daemon()
+
+    @staticmethod
+    def _ensure_daemon() -> None:
+        try:
+            subprocess.run(
+                ["pgrep", "-x", "ydotoold"],
+                capture_output=True, timeout=2,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        else:
+            return
+
+        logger.info("ydotoold not running — attempting to start it...")
+        socket_path = f"/run/user/{os.getuid()}/.ydotool_socket"
+        try:
+            subprocess.Popen(
+                ["ydotoold"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            # Wait for socket to be ready (up to 2s)
+            for _ in range(20):
+                if os.path.exists(socket_path):
+                    break
+                time.sleep(0.1)
+        except FileNotFoundError:
+            logger.error("ydotoold not found. Install ydotool, then start ydotoold manually.")
+        except Exception as e:
+            logger.error("Failed to start ydotoold: %s", e)
+
+    def _run(self, args: list[str]) -> None:
+        try:
+            r = subprocess.run(args, capture_output=True, text=True, timeout=2)
+            if r.returncode != 0:
+                logger.debug("ydotool error (rc=%d): %s", r.returncode, r.stderr.strip())
+        except FileNotFoundError:
+            logger.error("ydotool not found — install ydotool and start ydotoold")
+        except subprocess.TimeoutExpired:
+            logger.debug("ydotool timed out")
+        except Exception as e:
+            logger.debug("ydotool exception: %s", e)
+
+    def _key(self, scancodes: list[str]) -> None:
+        """Send raw scancodes via ydotool."""
+        self._run(["ydotool", "key", *scancodes])
+
+    def type_text(self, text: str, is_terminal: bool = False) -> None:
+        """Bridge: wl-copy text, then Ctrl+V (/Shift) via raw scancodes."""
+        try:
+            proc = subprocess.Popen(
+                ["wl-copy"],
+                stdin=subprocess.PIPE,
+            )
+            proc.communicate(input=text.encode("utf-8"))
+        except Exception as e:
+            logger.debug("wl-copy error in type_text: %s", e)
+            return
+        self._key(self._CTRL_SHIFT_V if is_terminal else self._CTRL_V)
 
     def simulate_paste(self, is_terminal: bool = False) -> None:
         if is_terminal:
-            # Ctrl+Shift+V: wtype needs modifiers spelled out
-            subprocess.run(
-                ["wtype", "-M", "ctrl", "-M", "shift", "-P", "v", "-p", "v", "-m", "shift", "-m", "ctrl"],
-                timeout=2,
-            )
+            self._key(self._CTRL_SHIFT_V)
         else:
-            subprocess.run(
-                ["wtype", "-M", "ctrl", "-P", "v", "-p", "v", "-m", "ctrl"],
-                timeout=2,
-            )
+            self._key(self._CTRL_V)
 
     def simulate_copy(self, is_terminal: bool = False) -> None:
         if is_terminal:
-            subprocess.run(
-                ["wtype", "-M", "ctrl", "-M", "shift", "-P", "c", "-p", "c", "-m", "shift", "-m", "ctrl"],
-                timeout=2,
-            )
+            self._key(self._CTRL_SHIFT_C)
         else:
-            subprocess.run(
-                ["wtype", "-M", "ctrl", "-P", "c", "-p", "c", "-m", "ctrl"],
-                timeout=2,
-            )
+            self._key(self._CTRL_C)
 
     def is_terminal_focused(self) -> bool:
         """
@@ -80,7 +149,6 @@ class WaylandInput(InputBackend):
         Currently supports niri (via `niri msg focused-window`).
         Returns False for unsupported compositors (safe default → Ctrl+V).
         """
-        # Try niri IPC
         try:
             result = subprocess.run(
                 ["niri", "msg", "-j", "focused-window"],
@@ -95,7 +163,6 @@ class WaylandInput(InputBackend):
         except (FileNotFoundError, json.JSONDecodeError, Exception):
             pass
 
-        # Fallback: cannot detect → safe default (Ctrl+V)
         return False
 
 

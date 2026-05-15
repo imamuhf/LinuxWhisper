@@ -44,7 +44,7 @@ The app auto-detects your session type (X11 or Wayland) and uses the appropriate
 | Feature | X11 | Wayland |
 |:---|:---|:---|
 | Clipboard | `xclip` | `wl-clipboard` |
-| Key Simulation | `xdotool` | `wtype` |
+| Key Simulation | `xdotool` | `ydotool` |
 | Screenshots | `gnome-screenshot` | `grim` |
 | Overlays | GTK Window Hints | `gtk-layer-shell` |
 | Global Hotkeys | `evdev` | `evdev` |
@@ -133,7 +133,7 @@ src/linuxwhisper/
 │   ├── __init__.py      # Session detection + backend factory
 │   ├── base.py          # Abstract base classes (ABCs)
 │   ├── x11.py           # X11 backends (xdotool, xclip, gnome-screenshot)
-│   └── wayland.py       # Wayland backends (wtype, wl-clipboard, grim)
+│   └── wayland.py       # Wayland backends (ydotool, wl-clipboard, grim)
 ├── services/
 │   ├── audio.py         # AudioService (recording + transcription)
 │   ├── ai.py            # AIService (chat + vision)

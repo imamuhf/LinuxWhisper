@@ -101,9 +101,13 @@ class Config:
     CHAT_AUTO_HIDE_SEC: int = 3
 
     # --- AI Models ---
-    MODEL_CHAT: str = "moonshotai/kimi-k2-instruct"
+    MODEL_CHAT: str = "openai/gpt-oss-120b"
     MODEL_VISION: str = "meta-llama/llama-4-scout-17b-16e-instruct"
     MODEL_WHISPER: str = "whisper-large-v3"
+    WHISPER_MODELS: Tuple[str, ...] = (
+        "whisper-large-v3",
+        "whisper-large-v3-turbo",
+    )
     MODEL_TTS: str = "canopylabs/orpheus-v1-english"
 
     # --- TTS Voices ---
@@ -126,6 +130,7 @@ class Config:
     # --- Mode Definitions (icon, overlay text, colors) ---
     MODES: Dict[str, Dict[str, str]] = field(default_factory=lambda: {
         "dictation":  {"icon": "🎙️", "text": "Listening...",    "bg": "bg", "fg": "accent"},
+        "dictation_terminal": {"icon": "💻", "text": "Term Dictation...", "bg": "bg", "fg": "accent"},
         "ai":         {"icon": "🤖", "text": "AI Listening...", "bg": "bg", "fg": "accent"},
         "ai_rewrite": {"icon": "✍️", "text": "Rewrite Mode...", "bg": "bg", "fg": "accent"},
         "vision":     {"icon": "📸", "text": "Vision Mode...",  "bg": "bg", "fg": "accent"},
@@ -135,7 +140,8 @@ class Config:
     # format: "id": (Label, PrimaryKeycode, [ExtraKeycodes])
     # Uses evdev ecodes — works on both X11 and Wayland.
     HOTKEY_DEFS: Dict[str, Tuple[str, int, List[int]]] = field(default_factory=lambda: {
-        "dictation":  ("R-Alt / F3",  ecodes.KEY_RIGHTALT,  [ecodes.KEY_F3, ecodes.KEY_F13]),
+        "dictation":  ("R-Alt / F3",       ecodes.KEY_RIGHTALT,  [ecodes.KEY_F3, ecodes.KEY_F13]),
+        "dictation_terminal": ("R-Ctrl",  ecodes.KEY_RIGHTCTRL, []),
         "ai":         ("F4",  ecodes.KEY_F4,  [ecodes.KEY_F14]),
         "ai_rewrite": ("F7",  ecodes.KEY_F7,  [ecodes.KEY_PREVIOUSSONG]),
         "vision":     ("F8",  ecodes.KEY_F8,  [ecodes.KEY_PLAYPAUSE]),
