@@ -189,7 +189,9 @@ class WaylandScreenshot(ScreenshotBackend):
         # spectacle (KDE)
         try:
             env = os.environ.copy()
-            env.pop("LIBGL_ALWAYS_SOFTWARE", None)
+            for k in ("LIBGL_ALWAYS_SOFTWARE", "GDK_BACKEND", "GTK_PATH",
+                       "GTK_MODULES", "WEBKIT_DISABLE_COMPOSITING_MODE"):
+                env.pop(k, None)
             r = subprocess.run(
                 ["spectacle", "-b", "-n", "-f", "-o", output_path],
                 env=env,
