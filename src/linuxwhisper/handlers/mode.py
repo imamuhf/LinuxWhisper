@@ -88,6 +88,7 @@ class ModeHandler:
         HistoryManager.add_answer(f"[Dictation] {text}")
         ChatManager.add_message("user", f"🎤 {text}")
         ClipboardService.type_text(text)
+        GLib.timeout_add(1500, OverlayManager.hide)
 
     @staticmethod
     def _handle_dictation_terminal(text: str) -> None:
@@ -95,6 +96,7 @@ class ModeHandler:
         HistoryManager.add_answer(f"[Term Dictation] {text}")
         ChatManager.add_message("user", f"💻 {text}")
         ClipboardService.type_text(text, is_terminal=True)
+        GLib.timeout_add(1500, OverlayManager.hide)
 
     @staticmethod
     def _handle_ai(text: str) -> None:
@@ -103,16 +105,13 @@ class ModeHandler:
         if not response:
             return
 
-        # Update histories
         HistoryManager.add_message("user", text)
         HistoryManager.add_message("assistant", response)
         HistoryManager.add_answer(response)
 
-        # Update chat overlay
-        ChatManager.add_message("user", text)
-        ChatManager.add_message("assistant", response)
-
         ClipboardService.type_text(response)
+        OverlayManager.show_text(response[:100])
+        GLib.timeout_add(8000, OverlayManager.hide)
         TTSService.speak(response)
 
     @staticmethod
@@ -131,16 +130,13 @@ class ModeHandler:
         if not response:
             return
 
-        # Update histories
         HistoryManager.add_message("user", f"[Rewrite] {text}\nOriginal: {original[:200]}...")
         HistoryManager.add_message("assistant", response)
         HistoryManager.add_answer(response)
 
-        # Update chat overlay
-        ChatManager.add_message("user", f"✍️ {text}")
-        ChatManager.add_message("assistant", response)
-
         ClipboardService.paste_text(response)
+        OverlayManager.show_text(response[:100])
+        GLib.timeout_add(8000, OverlayManager.hide)
         TTSService.speak(response)
 
     @staticmethod
@@ -159,14 +155,11 @@ class ModeHandler:
             return
         print(f"[VISION] AI responded, typing...")
 
-        # Update histories
         HistoryManager.add_message("user", f"[Screenshot] {text}")
         HistoryManager.add_message("assistant", response)
         HistoryManager.add_answer(response)
 
-        # Update chat overlay
-        ChatManager.add_message("user", f"📸 {text}")
-        ChatManager.add_message("assistant", response)
-
         ClipboardService.type_text(response)
+        OverlayManager.show_text(response[:100])
+        GLib.timeout_add(8000, OverlayManager.hide)
         TTSService.speak(response)

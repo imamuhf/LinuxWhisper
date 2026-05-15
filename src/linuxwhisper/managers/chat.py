@@ -50,32 +50,13 @@ class ChatManager:
 
     @staticmethod
     def _show_overlay(status_text: Optional[str] = None) -> None:
-        """Show or update chat overlay."""
+        """Show or update chat overlay (currently suppressed — using bottom overlay instead)."""
         ChatManager._cancel_timer()
-
         if not STATE.chat_enabled:
             ChatManager._destroy()
             return
-
-        if not STATE.chat_overlay_window:
-            # Late import to avoid circular dependency
-            from linuxwhisper.ui.chat_overlay import ChatOverlay
-            STATE.chat_overlay_window = ChatOverlay()
-        elif STATE.chat_overlay_window.fade_out_active:
-            STATE.chat_overlay_window.start_fade_in()
-
-        STATE.chat_overlay_window.update_content(
-            STATE.chat_messages,
-            status_text,
-            is_pinned=STATE.chat_pinned,
-            is_tts=STATE.tts_enabled
-        )
-
-        if not STATE.chat_pinned:
-            STATE.chat_hide_timer = GLib.timeout_add_seconds(
-                CFG.CHAT_AUTO_HIDE_SEC,
-                ChatManager._auto_hide
-            )
+        # Chat overlay window suppressed — responses shown in bottom recording overlay.
+        # STATE.chat_messages still stored for history purposes.
 
     @staticmethod
     def _auto_hide() -> bool:

@@ -152,7 +152,6 @@ class KeyboardHandler:
             if transcribed:
                 OverlayManager.show_text(transcribed)
                 ModeHandler.process(STATE.current_mode, transcribed)
-                GLib.timeout_add(1500, OverlayManager.hide)
 
     @classmethod
     def run(cls) -> None:
