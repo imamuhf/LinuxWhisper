@@ -99,10 +99,11 @@ class TrayManager:
 
         # Model submenu
         model_menu = Gtk.Menu()
-        model_group = []
-        for i, model in enumerate(CFG.WHISPER_MODELS):
+        model_group = None
+        for model in CFG.WHISPER_MODELS:
             item = Gtk.RadioMenuItem(group=model_group, label=model)
-            model_group.append(item)
+            if model_group is None:
+                model_group = item
             if model == STATE.whisper_model:
                 item.set_active(True)
             item.connect("toggled", TrayManager._toggle_model, model)
