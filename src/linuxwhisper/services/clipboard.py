@@ -30,7 +30,9 @@ class ClipboardService:
             original = None
 
         clean_text = f" {text.strip()}" if not text.startswith(" ") else text
-        inp.type_text(clean_text, is_terminal=is_terminal)
+        clipboard.copy(clean_text)
+        time.sleep(0.15)
+        inp.simulate_paste(is_terminal=is_terminal)
 
         time.sleep(0.1)
         if original is not None:

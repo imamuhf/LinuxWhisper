@@ -7,6 +7,7 @@ own Gtk main loop.
 
 Communication: Unix socket pair, newline-delimited JSON.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,8 +18,10 @@ import sys
 from typing import Any, Dict
 
 import gi
-gi.require_version('GLib', '2.0')
-from gi.repository import GLib
+
+gi.require_version("GLib", "2.0")
+gi.require_version("Gtk", "3.0")
+from gi.repository import GLib, Gtk
 
 from linuxwhisper.state import STATE
 
@@ -34,10 +37,14 @@ class TrayManager:
     def start(cls) -> None:
         """Launch the tray subprocess and enter the main loop."""
         if not cls._check_available():
-            print("\u26a0\ufe0f AyatanaAppIndicator3 not available \u2014 running without tray icon.")
-            print("   Install: libayatana-appindicator (Arch) or gir1.2-ayatanaappindicator3-0.1 (Debian)")
-            STATE.main_loop = GLib.MainLoop()
-            STATE.main_loop.run()
+            print(
+                "\u26a0\ufe0f AyatanaAppIndicator3 not available \u2014 running without tray icon."
+            )
+            print(
+                "   Install: libayatana-appindicator (Arch) or gir1.2-ayatanaappindicator3-0.1 (Debian)"
+            )
+            Gtk.init([])
+            Gtk.main()
             return
 
         cls._spawn()
@@ -45,8 +52,8 @@ class TrayManager:
         chan = GLib.IOChannel.unix_new(cls._sock.fileno())
         chan.add_watch(GLib.IO_IN | GLib.IO_HUP, cls._on_event)
 
-        STATE.main_loop = GLib.MainLoop()
-        STATE.main_loop.run()
+        Gtk.init([])
+        Gtk.main()
 
     @classmethod
     def update_menu(cls) -> None:
@@ -67,10 +74,15 @@ class TrayManager:
             return cls._available
         try:
             result = subprocess.run(
-                [sys.executable, "-c",
-                 "import gi; gi.require_version('AyatanaAppIndicator3', '0.1'); "
-                 "from gi.repository import AyatanaAppIndicator3; print('ok')"],
-                capture_output=True, text=True, timeout=5,
+                [
+                    sys.executable,
+                    "-c",
+                    "import gi; gi.require_version('AyatanaAppIndicator3', '0.1'); "
+                    "from gi.repository import AyatanaAppIndicator3; print('ok')",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             cls._available = result.returncode == 0 and "ok" in result.stdout
         except Exception:
@@ -123,8 +135,10 @@ class TrayManager:
         if ev == "chat_toggle":
             STATE.chat_enabled = event["active"]
             from linuxwhisper.state import SettingsManager
+
             SettingsManager.save(STATE)
             from linuxwhisper.managers.chat import ChatManager
+
             if not STATE.chat_enabled:
                 ChatManager._destroy()
             else:
@@ -132,29 +146,34 @@ class TrayManager:
         elif ev == "mode_toggle":
             STATE.toggle_mode = event["active"]
             from linuxwhisper.state import SettingsManager
+
             SettingsManager.save(STATE)
         elif ev == "model_switch":
             STATE.whisper_model = event["model"]
             print(f"\U0001f399\ufe0f Dictation model switched to: {event['model']}")
             from linuxwhisper.state import SettingsManager
+
             SettingsManager.save(STATE)
         elif ev == "show_settings":
             from linuxwhisper.ui.settings_dialog import SettingsDialog
+
             SettingsDialog.show()
         elif ev == "clear_history":
             from linuxwhisper.managers.history import HistoryManager
+
             HistoryManager.clear_all()
         elif ev == "history_click":
             idx = event["index"]
             if idx < len(STATE.answer_history):
-                from linuxwhisper.services.clipboard import ClipboardService
                 import re
+
+                from linuxwhisper.services.clipboard import ClipboardService
+
                 clean = re.sub(r"^\[.*?\]\s*", "", STATE.answer_history[idx]["text"])
                 ClipboardService.paste_text(clean)
         elif ev == "quit":
             cls._cleanup()
-            if STATE.main_loop:
-                STATE.main_loop.quit()
+            Gtk.main_quit()
             os._exit(0)
 
     @classmethod

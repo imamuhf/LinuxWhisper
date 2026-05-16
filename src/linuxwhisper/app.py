@@ -1,6 +1,7 @@
 """
 LinuxWhisper — Application entry point.
 """
+
 from __future__ import annotations
 
 import os
@@ -12,7 +13,9 @@ os.environ["LIBGL_ALWAYS_SOFTWARE"] = "1"
 os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", message=".*Specified provider 'CUDAExecutionProvider'.*")
+warnings.filterwarnings(
+    "ignore", message=".*Specified provider 'CUDAExecutionProvider'.*"
+)
 
 from linuxwhisper.config import CFG
 from linuxwhisper.handlers.keyboard import KeyboardHandler
@@ -30,7 +33,7 @@ def main() -> None:
         "ai_rewrite": "Smart Rewrite - Highlight text & speak to edit",
         "vision": "Empathic Vision / Screenshot (Groq Llama 4)",
         "pin": "Toggle Chat Overlay Pin Mode",
-        "tts": "Toggle TTS (Read AI responses aloud)"
+        "tts": "Toggle TTS (Read AI responses aloud)",
     }
 
     i = 1

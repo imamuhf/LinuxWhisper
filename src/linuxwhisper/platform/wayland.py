@@ -74,14 +74,14 @@ class WaylandInput(InputBackend):
     @staticmethod
     def _ensure_daemon() -> None:
         try:
-            subprocess.run(
+            r = subprocess.run(
                 ["pgrep", "-x", "ydotoold"],
                 capture_output=True, timeout=2,
             )
+            if r.returncode == 0:
+                return
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
-        else:
-            return
 
         logger.info("ydotoold not running — attempting to start it...")
         socket_path = f"/run/user/{os.getuid()}/.ydotool_socket"
